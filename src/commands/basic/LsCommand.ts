@@ -136,10 +136,30 @@ export class LsCommand extends BaseCommand {
         const lines: string[] = [];
         let currentLine: string[] = [];
 
+        // ANSI color codes
+        const colors = {
+            reset: '\x1b[0m',
+            directory: '\x1b[1;34m',  // Bold blue
+            executable: '\x1b[1;32m', // Bold green
+            symlink: '\x1b[1;36m',    // Bold cyan
+            normal: '\x1b[0m'         // Normal
+        };
+
         items.forEach(item => {
-            const prefix = this.isDirectory(item) ? '📁 ' : '📄 ';
-            const name = item.name;
-            currentLine.push(`${prefix}${name}`);
+            let color = colors.normal;
+            let name = item.name;
+
+            if (this.isDirectory(item)) {
+                color = colors.directory;
+                name = `${name}/`;
+            } else if (this.isFile(item)) {
+                // Check if file is executable (you might want to add this property to your File type)
+                if ((item as any).executable) {
+                    color = colors.executable;
+                }
+            }
+
+            currentLine.push(`${color}${name}${colors.reset}`);
 
             if (currentLine.length === itemsPerLine) {
                 lines.push(currentLine.join('  '));
@@ -155,12 +175,32 @@ export class LsCommand extends BaseCommand {
     }
 
     private formatLongListing(items: FileSystemNode[]): string {
+        const colors = {
+            reset: '\x1b[0m',
+            directory: '\x1b[1;34m',  // Bold blue
+            executable: '\x1b[1;32m', // Bold green
+            symlink: '\x1b[1;36m',    // Bold cyan
+            normal: '\x1b[0m'         // Normal
+        };
+
         const lines = items.map(item => {
             const type = this.isDirectory(item) ? 'd' : '-';
             const size = this.isFile(item) ? item.size.toString().padStart(8) : '        ';
             const date = item.modifiedAt.toLocaleString();
-            const name = this.isDirectory(item) ? `📁 ${item.name}/` : `📄 ${item.name}`;
-            return `${type} ${size} ${date} ${name}`;
+            
+            let color = colors.normal;
+            let name = item.name;
+
+            if (this.isDirectory(item)) {
+                color = colors.directory;
+                name = `${name}/`;
+            } else if (this.isFile(item)) {
+                if ((item as any).executable) {
+                    color = colors.executable;
+                }
+            }
+
+            return `${type} ${size} ${date} ${color}${name}${colors.reset}`;
         });
 
         return lines.join('\n');

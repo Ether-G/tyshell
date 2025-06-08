@@ -55,8 +55,9 @@ export class FileSystem implements IFileSystem {
     }
 
     public getNode(path: string): FileSystemNode | null {
-        if (path === '/') return this.root;
-        const parts = path.split('/').filter(Boolean);
+        const absolutePath = this.resolvePath(path);
+        if (absolutePath === '/') return this.root;
+        const parts = absolutePath.split('/').filter(Boolean);
         let current: FileSystemNode = this.root;
         for (const part of parts) {
             if (!this.isDirectory(current)) return null;
@@ -75,7 +76,7 @@ export class FileSystem implements IFileSystem {
         return this.currentDirectory;
     }
 
-    public createFile(path: string, content: string): void {
+    public createFile(path: string, content: string, overwrite: boolean = false): void {
         const absolutePath = this.resolvePath(path);
         const parentPath = this.dirname(absolutePath);
         const fileName = this.basename(absolutePath);
@@ -83,7 +84,7 @@ export class FileSystem implements IFileSystem {
         if (!parent || !this.isDirectory(parent)) {
             throw new Error(`Parent directory not found: ${parentPath}`);
         }
-        if (parent.children.has(fileName)) {
+        if (parent.children.has(fileName) && !overwrite) {
             throw new Error(`File already exists: ${fileName}`);
         }
         const file: File = {

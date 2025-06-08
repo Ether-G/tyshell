@@ -3,36 +3,70 @@ import { FileSystem } from '../../filesystem/FileSystem';
 
 export class EchoCommand extends BaseCommand {
     constructor() {
-        super('echo', 'Write text to a file or display text', 'echo [text] [> filename]');
+        super('echo', 'Write text to a file or display text', 'echo [-e] [text] [>|>>] [file]');
     }
 
     public async execute(args: string[], fileSystem: FileSystem): Promise<string> {
         if (args.length === 0) {
-            return '';
+            return '\n';
         }
 
-        // Check if we're writing to a file
-        const redirectIndex = args.indexOf('>');
-        if (redirectIndex !== -1) {
-            const text = args.slice(0, redirectIndex).join(' ');
-            const filename = args[redirectIndex + 1];
+        // Check for -e option
+        let interpretEscapes = false;
+        if (args[0] === '-e') {
+            interpretEscapes = true;
+            args = args.slice(1);
+        }
 
-            if (!filename) {
-                return 'Error: No filename specified after >';
+        // Find the redirection operator and file path
+        const redirectIndex = args.findIndex(arg => arg === '>' || arg === '>>');
+        const isAppend = redirectIndex !== -1 && args[redirectIndex] === '>>';
+        const hasRedirect = redirectIndex !== -1;
+
+        // Get the text to echo (everything before the redirection)
+        let text = hasRedirect ? args.slice(0, redirectIndex).join(' ') : args.join(' ');
+        
+        // Interpret escape sequences if -e is specified
+        if (interpretEscapes) {
+            text = text.replace(/\\n/g, '\n')
+                      .replace(/\\t/g, '\t')
+                      .replace(/\\r/g, '\r')
+                      .replace(/\\b/g, '\b')
+                      .replace(/\\f/g, '\f')
+                      .replace(/\\v/g, '\v')
+                      .replace(/\\0/g, '\0')
+                      .replace(/\\\\/g, '\\');
+        }
+
+        if (hasRedirect) {
+            if (redirectIndex === args.length - 1) {
+                return 'Error: No file specified for redirection';
             }
 
+            const filePath = args[redirectIndex + 1];
             try {
-                fileSystem.createFile(filename, text);
+                if (isAppend) {
+                    // Get existing content and append
+                    const node = fileSystem.getNode(filePath);
+                    if (node && fileSystem.isFile(node)) {
+                        const newContent = node.content + text;
+                        fileSystem.createFile(filePath, newContent, true);
+                    } else {
+                        fileSystem.createFile(filePath, text);
+                    }
+                } else {
+                    // Overwrite existing file
+                    fileSystem.createFile(filePath, text, true);
+                }
                 return '';
-            } catch (error: unknown) {
+            } catch (error) {
                 if (error instanceof Error) {
                     return `Error: ${error.message}`;
                 }
-                return 'Error: An unknown error occurred';
+                return 'Error: Failed to write to file';
             }
         }
 
-        // Just echo the text
-        return args.join(' ');
+        return text;
     }
 } 

@@ -4,26 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TyShell - Web Terminal</title>
-    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="terminal-container">
-        <div class="terminal-header">
-            <div class="terminal-title">TyShell</div>
-            <div class="terminal-controls">
-                <button class="control-button minimize">-</button>
-                <button class="control-button maximize">□</button>
-                <button class="control-button close">×</button>
-            </div>
-        </div>
-        <div class="terminal-body">
-            <div id="output"></div>
-            <div class="input-line">
-                <span class="prompt"></span>
-                <input type="text" id="command-input" autofocus>
-            </div>
-        </div>
-    </div>
+    <div id="terminal"></div>
     <script src="terminal.js"></script>
 </body>
 </html> 
