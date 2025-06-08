@@ -2,6 +2,9 @@
 
 A web-based Linux terminal emulator built with TypeScript.
 
+## VIDEO
+https://youtu.be/WPGH-QTxA98
+
 ## Features
 
 - Terminal interface with command prompt and history
