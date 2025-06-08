@@ -1,0 +1,130 @@
+:root {
+    --bg-color: #1e1e1e;
+    --text-color: #f8f8f2;
+    --header-bg: #2d2d2d;
+    --border-color: #3d3d3d;
+    --accent-color: #6272a4;
+    --error-color: #ff5555;
+    --success-color: #50fa7b;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Fira Code', 'Consolas', monospace;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.5;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.terminal-container {
+    width: 90%;
+    max-width: 900px;
+    height: 80vh;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.terminal-header {
+    background-color: var(--header-bg);
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.terminal-title {
+    font-size: 14px;
+    color: var(--text-color);
+}
+
+.terminal-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.control-button {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+}
+
+.minimize { background-color: #ffbd2e; }
+.maximize { background-color: #28c940; }
+.close { background-color: #ff5f56; }
+
+.terminal-body {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+#output {
+    flex: 1;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.input-line {
+    display: flex;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.prompt {
+    color: var(--accent-color);
+    margin-right: 8px;
+}
+
+#command-input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: inherit;
+    outline: none;
+}
+
+.error {
+    color: var(--error-color);
+}
+
+.success {
+    color: var(--success-color);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-color);
+} 
