@@ -127,4 +127,94 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--accent-color);
+}
+
+/* Tab bar improvements */
+.terminal-tab-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 44px;
+    background: linear-gradient(90deg, #232526 0%, #414345 100%);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 8px;
+    border-bottom: 2px solid var(--accent-color);
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.terminal-tab {
+    display: flex;
+    align-items: center;
+    padding: 8px 20px 8px 16px;
+    background: #282a36;
+    color: var(--text-color);
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    user-select: none;
+    gap: 10px;
+    height: 32px;
+    min-width: 120px;
+    max-width: 220px;
+    font-weight: 500;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 6px rgba(40,42,54,0.08);
+    border: 1px solid transparent;
+    margin-bottom: -2px;
+}
+.terminal-tab.active {
+    background: #44475a;
+    color: #50fa7b;
+    border-bottom: 2px solid var(--accent-color);
+    box-shadow: 0 4px 12px rgba(80,250,123,0.08);
+    z-index: 2;
+}
+.terminal-tab-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 15px;
+}
+.terminal-tab-close {
+    background: none;
+    border: none;
+    color: #ff5555;
+    cursor: pointer;
+    padding: 2px 8px;
+    font-size: 18px;
+    border-radius: 4px;
+    opacity: 0.7;
+    transition: background 0.2s, color 0.2s, opacity 0.2s;
+}
+.terminal-tab-close:hover {
+    opacity: 1;
+    background: #ff5555;
+    color: #fff;
+}
+
+/* New terminal button improvements */
+.new-terminal-btn {
+    position: fixed;
+    top: 8px;
+    right: 24px;
+    padding: 6px 16px;
+    background: linear-gradient(90deg, #50fa7b 0%, #6272a4 100%);
+    color: #232526;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(80,250,123,0.10);
+    z-index: 1100;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+.new-terminal-btn:hover {
+    background: linear-gradient(90deg, #6272a4 0%, #50fa7b 100%);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(98,114,164,0.15);
 } 

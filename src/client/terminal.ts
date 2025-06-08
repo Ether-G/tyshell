@@ -134,50 +134,70 @@ export class WebTerminal implements Terminal {
                 left: 0;
                 right: 0;
                 height: 40px;
-                background-color: #1e1e1e;
+                background: #181a1b;
                 display: flex;
-                align-items: center;
-                padding: 0 10px;
-                gap: 5px;
-                border-bottom: 1px solid #333;
+                align-items: flex-end;
+                padding: 0 12px;
+                gap: 2px;
+                border-bottom: 2px solid #232526;
                 z-index: 1000;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             }
             .terminal-tab {
                 display: flex;
                 align-items: center;
-                padding: 8px 16px;
-                background-color: #2d2d2d;
-                color: #ffffff;
-                border-radius: 4px 4px 0 0;
+                padding: 0 18px 0 12px;
+                background: #232526;
+                color: #b8c7a9;
+                border-radius: 6px 6px 0 0;
                 cursor: pointer;
                 user-select: none;
-                gap: 8px;
                 height: 32px;
-                min-width: 120px;
+                min-width: 100px;
                 max-width: 200px;
+                font-family: 'Fira Mono', 'Consolas', monospace;
+                font-size: 15px;
+                font-weight: 600;
+                letter-spacing: 0.5px;
+                border: 1.5px solid transparent;
+                border-bottom: none;
+                margin-bottom: -2px;
+                transition: background 0.2s, color 0.2s, box-shadow 0.2s;
             }
             .terminal-tab.active {
-                background-color: #3d3d3d;
+                background: #181a1b;
+                color: #50fa7b;
+                border-color: #50fa7b #50fa7b transparent #50fa7b;
+                box-shadow: 0 2px 12px rgba(80,250,123,0.10);
+                z-index: 2;
+                text-shadow: 0 0 4px #50fa7b55;
             }
             .terminal-tab-title {
                 flex: 1;
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
+                text-align: left;
+                font-family: inherit;
+                font-size: inherit;
+                font-weight: inherit;
             }
             .terminal-tab-close {
                 background: none;
                 border: none;
-                color: #ffffff;
+                color: #444;
                 cursor: pointer;
-                padding: 2px 6px;
-                font-size: 14px;
+                padding: 0 6px;
+                font-size: 15px;
                 border-radius: 3px;
-                opacity: 0.7;
+                opacity: 0.5;
+                margin-left: 4px;
+                transition: background 0.2s, color 0.2s, opacity 0.2s;
             }
             .terminal-tab-close:hover {
                 opacity: 1;
-                background-color: #ff5555;
+                color: #ff5555;
+                background: #232526;
             }
             .terminal-window-group {
                 position: fixed;
@@ -254,18 +274,23 @@ export class WebTerminal implements Terminal {
             .new-terminal-btn {
                 position: fixed;
                 top: 8px;
-                right: 10px;
-                padding: 4px 8px;
-                background-color: #4CAF50;
-                color: white;
+                right: 24px;
+                padding: 6px 16px;
+                background: linear-gradient(90deg, #50fa7b 0%, #6272a4 100%);
+                color: #232526;
                 border: none;
-                border-radius: 4px;
+                border-radius: 6px;
                 cursor: pointer;
-                font-size: 12px;
-                z-index: 1001;
+                font-size: 18px;
+                font-weight: bold;
+                box-shadow: 0 2px 8px rgba(80,250,123,0.10);
+                z-index: 1100;
+                transition: background 0.2s, color 0.2s, box-shadow 0.2s;
             }
             .new-terminal-btn:hover {
-                background-color: #45a049;
+                background: linear-gradient(90deg, #6272a4 0%, #50fa7b 100%);
+                color: #fff;
+                box-shadow: 0 4px 16px rgba(98,114,164,0.15);
             }
             .terminal.editor-mode .terminal-input-line {
                 display: none;
