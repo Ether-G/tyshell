@@ -8,9 +8,9 @@ export class CommandExecutor implements ICommandExecutor {
     private registry: CommandRegistry;
     private fileSystem: FileSystem;
 
-    constructor(fileSystem: FileSystem) {
+    constructor(fileSystem: FileSystem, registry: CommandRegistry) {
         this.parser = new CommandParser();
-        this.registry = new CommandRegistry(fileSystem);
+        this.registry = registry;
         this.fileSystem = fileSystem;
     }
 

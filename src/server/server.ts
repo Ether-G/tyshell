@@ -1,10 +1,11 @@
 import express from 'express';
 import { createServer } from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
+import { Server, Socket } from 'socket.io';
 import cors from 'cors';
 import path from 'path';
 import { FileSystem } from '../filesystem/FileSystem';
 import { CommandExecutor } from '../commands/CommandExecutor';
+import { CommandRegistry } from '../commands/CommandRegistry';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -16,64 +17,53 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, '../../public')));
 
 // Create HTTP server
-const server = createServer(app);
+const httpServer = createServer(app);
 
 // Create WebSocket server
-const wss = new WebSocketServer({ server });
+const io = new Server(httpServer);
 
 // Create file system and command executor instances
 const fileSystem = new FileSystem();
-const commandExecutor = new CommandExecutor(fileSystem);
+const registry = new CommandRegistry(fileSystem);
+const commandExecutor = new CommandExecutor(fileSystem, registry);
 
 // Handle WebSocket connections
-wss.on('connection', (ws: WebSocket) => {
+io.on('connection', (socket: Socket) => {
     console.log('Client connected');
 
     // Send initial prompt
-    ws.send(JSON.stringify({
-        type: 'prompt',
-        data: {
-            path: fileSystem.getCurrentPath(),
-            availableCommands: commandExecutor.getAvailableCommands()
-        }
-    }));
+    socket.emit('prompt', {
+        path: fileSystem.getCurrentPath(),
+        availableCommands: commandExecutor.getAvailableCommands()
+    });
 
     // Handle incoming messages
-    ws.on('message', async (message: Buffer) => {
+    socket.on('message', async (message: Buffer) => {
         try {
             const input = message.toString();
             const result = await commandExecutor.execute(input);
 
             // Send command result
-            ws.send(JSON.stringify({
-                type: 'result',
-                data: result
-            }));
+            socket.emit('result', result);
 
             // Send new prompt
-            ws.send(JSON.stringify({
-                type: 'prompt',
-                data: {
-                    path: fileSystem.getCurrentPath()
-                }
-            }));
+            socket.emit('prompt', {
+                path: fileSystem.getCurrentPath()
+            });
         } catch (error) {
-            ws.send(JSON.stringify({
-                type: 'error',
-                data: {
-                    message: (error as Error).message
-                }
-            }));
+            socket.emit('error', {
+                message: (error as Error).message
+            });
         }
     });
 
     // Handle client disconnection
-    ws.on('close', () => {
+    socket.on('disconnect', () => {
         console.log('Client disconnected');
     });
 });
 
 // Start server
-server.listen(port, () => {
+httpServer.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 }); 

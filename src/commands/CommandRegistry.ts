@@ -10,13 +10,19 @@ import { HelpCommand } from './basic/HelpCommand';
 import { EchoCommand } from './basic/EchoCommand';
 import { RmCommand } from './basic/RmCommand';
 import { CatCommand } from './basic/CatCommand';
+import { ScriptCommand } from './basic/ScriptCommand';
+import { EditCommand } from './basic/EditCommand';
+import { CommandExecutor } from './CommandExecutor';
+import { ExitCommand } from './basic/ExitCommand';
 
 export class CommandRegistry {
     private commands: Map<string, BaseCommand>;
+    private commandExecutor: CommandExecutor;
 
     constructor(private fileSystem: FileSystem) {
         this.commands = new Map();
         this.registerDefaultCommands();
+        this.commandExecutor = new CommandExecutor(fileSystem, this);
     }
 
     private registerDefaultCommands(): void {
@@ -30,6 +36,9 @@ export class CommandRegistry {
         this.registerCommand(new EchoCommand());
         this.registerCommand(new RmCommand());
         this.registerCommand(new CatCommand());
+        this.registerCommand(new ScriptCommand(this.fileSystem, this));
+        this.registerCommand(new EditCommand(this.fileSystem));
+        this.registerCommand(new ExitCommand());
     }
 
     public registerCommand(command: BaseCommand): void {
@@ -54,5 +63,9 @@ export class CommandRegistry {
             throw new Error(`Command not found: ${name}`);
         }
         return command.execute(args, this.fileSystem);
+    }
+
+    public getCommandExecutor(): CommandExecutor {
+        return this.commandExecutor;
     }
 } 

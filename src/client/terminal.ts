@@ -1,6 +1,8 @@
 import { CommandExecutor } from '../commands/CommandExecutor';
 import { FileSystem } from '../filesystem/FileSystem';
+import { EditCommand } from '../commands/basic/EditCommand';
 import { Terminal } from './types';
+import { CommandRegistry } from '../commands/CommandRegistry';
 
 export class WebTerminal implements Terminal {
     private terminalElement: HTMLElement;
@@ -22,11 +24,19 @@ export class WebTerminal implements Terminal {
     private static tabBar: HTMLElement;
     private static windowGroup: HTMLElement;
     private tabElement!: HTMLElement;
+    private isEditorMode: boolean = false;
+    private editorState: any = null;
+    private editorCommand: EditCommand | null = null;
+    private registry: CommandRegistry;
+    private boundEditorKeyDownHandler: (event: KeyboardEvent) => void;
+    private boundKeyDownHandler: ((event: KeyboardEvent) => void) | null = null;
+    private boundInputHandler: ((event: Event) => void) | null = null;
 
     constructor(terminalId: string, fileSystem: FileSystem) {
         this.terminalElement = document.getElementById(terminalId)!;
-        this.commandExecutor = new CommandExecutor(fileSystem);
         this.fileSystem = fileSystem;
+        this.registry = new CommandRegistry(fileSystem);
+        this.commandExecutor = new CommandExecutor(fileSystem, this.registry);
         
         this.scrollObserver = new MutationObserver(() => {
             this.forceScrollToBottom();
@@ -36,6 +46,7 @@ export class WebTerminal implements Terminal {
         WebTerminal.activeTerminals.add(this);
         
         this.initializeTerminal();
+        this.boundEditorKeyDownHandler = this.handleEditorKeyDown.bind(this);
     }
 
     private static initializeStaticElements(): void {
@@ -89,9 +100,15 @@ export class WebTerminal implements Terminal {
             characterData: true
         });
 
+        // Store bound handlers
+        this.boundKeyDownHandler = this.handleKeyDown.bind(this);
+        this.boundInputHandler = this.handleInput.bind(this);
+        
+        // Add initial event listeners
+        this.inputElement.addEventListener('keydown', this.boundKeyDownHandler);
+        this.inputElement.addEventListener('input', this.boundInputHandler);
+
         // Add event listeners
-        this.inputElement.addEventListener('keydown', this.handleKeyDown.bind(this));
-        this.inputElement.addEventListener('input', this.handleInput.bind(this));
         this.inputElement.addEventListener('click', () => this.inputElement.focus());
 
         // Add tab event listeners
@@ -250,6 +267,9 @@ export class WebTerminal implements Terminal {
             .new-terminal-btn:hover {
                 background-color: #45a049;
             }
+            .terminal.editor-mode .terminal-input-line {
+                display: none;
+            }
         `;
         document.head.appendChild(style);
 
@@ -326,6 +346,14 @@ export class WebTerminal implements Terminal {
     }
 
     private handleKeyDown(event: KeyboardEvent): void {
+        if (this.isEditorMode) return; // Skip normal key handling in editor mode
+
+        // Normal terminal mode
+        const inputElement = this.inputElement;
+        if (!inputElement || !(inputElement instanceof HTMLInputElement)) {
+            return;
+        }
+
         switch (event.key) {
             case 'Enter':
                 event.preventDefault();
@@ -342,20 +370,14 @@ export class WebTerminal implements Terminal {
             case 'ArrowLeft':
                 if (this.cursorPosition > 0) {
                     this.cursorPosition--;
+                    inputElement.setSelectionRange(this.cursorPosition, this.cursorPosition);
                 }
                 break;
             case 'ArrowRight':
-                if (this.cursorPosition < this.inputElement.value.length) {
+                if (this.cursorPosition < inputElement.value.length) {
                     this.cursorPosition++;
+                    inputElement.setSelectionRange(this.cursorPosition, this.cursorPosition);
                 }
-                break;
-            case 'Home':
-                event.preventDefault();
-                this.cursorPosition = 0;
-                break;
-            case 'End':
-                event.preventDefault();
-                this.cursorPosition = this.inputElement.value.length;
                 break;
         }
     }
@@ -372,14 +394,7 @@ export class WebTerminal implements Terminal {
             this.appendOutput(`$ ${command}`);
             
             try {
-                const result = await this.commandExecutor.execute(command);
-                if (result.success) {
-                    if (result.output) {
-                        this.appendOutput(result.output);
-                    }
-                } else {
-                    this.appendOutput(`Error: ${result.error}`);
-                }
+                await this.handleCommand(command);
             } catch (error) {
                 if (error instanceof Error) {
                     this.appendOutput(`Error: ${error.message}`);
@@ -395,6 +410,248 @@ export class WebTerminal implements Terminal {
         this.cursorPosition = 0;
         this.updatePrompt();
         this.forceScrollToBottom();
+    }
+
+    private async handleCommand(input: string): Promise<void> {
+        if (this.isEditorMode) {
+            this.handleEditorKey(input);
+            return;
+        }
+        const result = await this.commandExecutor.execute(input);
+        if (result.output.startsWith('\x1B[EDITOR_MODE]')) {
+            this.isEditorMode = true;
+            this.terminalElement.classList.add('editor-mode');
+            this.inputElement.style.display = 'none';
+            // Remove terminal input handlers
+            if (this.boundKeyDownHandler && this.boundInputHandler) {
+                this.inputElement.removeEventListener('keydown', this.boundKeyDownHandler);
+                this.inputElement.removeEventListener('input', this.boundInputHandler);
+            }
+            // Add global keyboard listener (only once, always same reference)
+            console.log('Adding global editor keydown handler');
+            document.addEventListener('keydown', this.boundEditorKeyDownHandler);
+            try {
+                // Parse editor state
+                const editorStateJson = result.output.slice('\x1B[EDITOR_MODE]'.length);
+                const editorState = JSON.parse(editorStateJson);
+                this.editorState = editorState;
+                this.editorCommand = this.registry.getCommand('edit') as EditCommand;
+                this.editorCommand.state = {
+                    content: editorState.content,
+                    cursor: editorState.cursor,
+                    scrollOffset: 0,
+                    modified: false,
+                    filename: editorState.filename,
+                    searchQuery: '',
+                    searchResults: [],
+                    currentSearchIndex: -1,
+                    mode: 'normal',
+                    promptMessage: '',
+                    promptInput: ''
+                };
+                this.renderEditor();
+            } catch (error) {
+                console.error('Failed to parse editor state:', error);
+                this.appendOutput('Error: Failed to initialize editor');
+                this.isEditorMode = false;
+                this.terminalElement.classList.remove('editor-mode');
+                this.inputElement.style.display = 'block';
+                this.promptElement.style.display = 'inline';
+                // Restore terminal input handlers on error
+                if (this.boundKeyDownHandler && this.boundInputHandler) {
+                    this.inputElement.addEventListener('keydown', this.boundKeyDownHandler);
+                    this.inputElement.addEventListener('input', this.boundInputHandler);
+                }
+            }
+        } else {
+            this.appendOutput(result.output);
+        }
+    }
+
+    private handleEditorKeyDown(event: KeyboardEvent): void {
+        console.log('GLOBAL EDITOR KEYDOWN HANDLER FIRED, isEditorMode:', this.isEditorMode);
+        if (!this.isEditorMode) return;
+
+        // Handle control keys
+        if (event.ctrlKey) {
+            switch (event.key.toLowerCase()) {
+                case 'o': // Save
+                    event.preventDefault();
+                    this.handleEditorKey('^O');
+                    break;
+                case 'x': // Exit
+                    event.preventDefault();
+                    this.handleEditorKey('^X');
+                    break;
+                case 'w': // Search
+                    event.preventDefault();
+                    this.handleEditorKey('^W');
+                    break;
+                case 'g': // Help
+                    event.preventDefault();
+                    this.handleEditorKey('^G');
+                    break;
+                case 'f': // Find next
+                    event.preventDefault();
+                    this.handleEditorKey('^F');
+                    break;
+                case 'b': // Find previous
+                    event.preventDefault();
+                    this.handleEditorKey('^B');
+                    break;
+            }
+            return;
+        }
+
+        // Handle special keys
+        switch (event.key) {
+            case 'ArrowUp':
+                this.handleEditorKey('ArrowUp');
+                break;
+            case 'ArrowDown':
+                this.handleEditorKey('ArrowDown');
+                break;
+            case 'ArrowLeft':
+                this.handleEditorKey('ArrowLeft');
+                break;
+            case 'ArrowRight':
+                this.handleEditorKey('ArrowRight');
+                break;
+            case 'Home':
+                this.handleEditorKey('Home');
+                break;
+            case 'End':
+                this.handleEditorKey('End');
+                break;
+            case 'PageUp':
+                this.handleEditorKey('PageUp');
+                break;
+            case 'PageDown':
+                this.handleEditorKey('PageDown');
+                break;
+            case 'Backspace':
+                this.handleEditorKey('Backspace');
+                break;
+            case 'Delete':
+                this.handleEditorKey('Delete');
+                break;
+            case 'Enter':
+                this.handleEditorKey('Enter');
+                break;
+            case 'Escape':
+                if (this.editorCommand?.state?.mode !== 'normal') {
+                    this.handleEditorKey('Escape');
+                }
+                break;
+            default:
+                if (event.key.length === 1) {
+                    this.handleEditorKey(event.key);
+                }
+        }
+    }
+
+    private handleEditorKey(key: string): void {
+        if (!this.editorCommand || !this.isEditorMode) return;
+        // Handle control keys
+        if (key.startsWith('^')) {
+            switch (key) {
+                case '^O': // Save
+                    this.editorCommand.saveFile(this.fileSystem).then(() => {
+                        this.renderEditor();
+                    });
+                    break;
+                case '^X': // Exit
+                    if (this.editorCommand.state?.modified) {
+                        this.editorCommand.state.mode = 'save_prompt';
+                        this.editorCommand.state.promptMessage = 'Save changes before exit?';
+                        this.renderEditor();
+                    } else {
+                        this.exitEditor();
+                    }
+                    break;
+                case '^W': // Search
+                    if (this.editorCommand.state) {
+                        this.editorCommand.state.mode = 'search';
+                    }
+                    this.renderEditor();
+                    break;
+                case '^G': // Help
+                    if (this.editorCommand.state) {
+                        this.editorCommand.state.mode = 'help';
+                    }
+                    this.renderEditor();
+                    break;
+                case '^F': // Find next
+                    this.editorCommand.findNext();
+                    this.renderEditor();
+                    break;
+                case '^B': // Find previous
+                    this.editorCommand.findPrevious();
+                    this.renderEditor();
+                    break;
+            }
+        } else {
+            // Check if editor wants to exit
+            const shouldExit = this.editorCommand.handleKeyPress(key);
+            if (shouldExit) {
+                this.exitEditor();
+            } else {
+                this.renderEditor();
+            }
+        }
+    }
+
+    private exitEditor(): void {
+        console.log('exitEditor called');
+        this.editorCommand?.exit(this.fileSystem);
+        this.isEditorMode = false;
+        this.editorState = null;
+        this.editorCommand = null;
+        this.clearScreen();
+        this.updatePrompt();
+        this.inputElement.value = '';
+        // Force a terminal reset
+        this.terminalElement.classList.remove('editor-mode');
+        this.inputElement.style.display = 'block';
+        this.promptElement.style.display = 'inline';
+        // Remove editor keyboard listener
+        console.log('Removing global editor keydown handler');
+        document.removeEventListener('keydown', this.boundEditorKeyDownHandler);
+        // Re-enable terminal input handling
+        if (this.boundKeyDownHandler && this.boundInputHandler) {
+            this.inputElement.addEventListener('keydown', this.boundKeyDownHandler);
+            this.inputElement.addEventListener('input', this.boundInputHandler);
+        }
+        this.appendOutput('$ ');
+        this.inputElement.focus();
+        console.log('exitEditor completed, isEditorMode:', this.isEditorMode);
+    }
+
+    private handleSavePromptKey(key: string): void {
+        console.log('handleSavePromptKey:', key);
+        if (!this.editorCommand || !this.isEditorMode) return;
+
+        if (key.toLowerCase() === 'y' || key === 'Enter') {
+            console.log('Saving before exit');
+            this.editorCommand.saveFile(this.fileSystem).then(() => {
+                console.log('Save completed, exiting editor');
+                this.exitEditor();
+            });
+        } else if (key.toLowerCase() === 'n' || key === 'Escape') {
+            console.log('Exiting without save');
+            this.exitEditor();
+        }
+    }
+
+    private renderEditor(): void {
+        if (!this.editorCommand || !this.isEditorMode) return;
+        this.clearScreen();
+        const screen = this.editorCommand.renderScreen();
+        this.appendOutput(screen);
+    }
+
+    private clearScreen(): void {
+        this.outputElement.innerHTML = '';
     }
 
     private navigateHistory(direction: number): void {
