@@ -691,6 +691,11 @@ export class WebTerminal implements Terminal {
     }
 
     private appendOutput(text: string): void {
+        // Intercept clear screen ANSI sequence
+        if (text.includes('\x1B[2J')) {
+            this.clearScreen();
+            return;
+        }
         const line = document.createElement('div');
         
         // Handle ANSI color codes
